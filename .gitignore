@@ -30,3 +30,8 @@
 *.exe
 *.out
 *.app
+surf
+
+# Visual Studio Code
+*.code-workspace
+.vscode/

@@ -1,13 +1,19 @@
-CFLAGS=-c -Wall
-LDFLAGS=-v -lopencv_imgcodecs -lopencv_features2d -lopencv_xfeatures2d -lopencv_highgui -lopencv_core
-SOURCES=surf.cpp
+CXXFLAGS=-c -Wall -std=c++14
+LDFLAGS=-lopencv_imgcodecs -lopencv_features2d -lopencv_xfeatures2d -lopencv_highgui -lopencv_core
+SOURCES=algorithms.cpp surf.cpp
 OBJECTS=$(SOURCES:.cpp=.o)
 EXECUTABLE=surf
 
-all: $(SOURCES) $(EXECUTABLE)
+all: release
+
+release: CXXFLAGS += -O3
+release: $(SOURCES) $(EXECUTABLE)
+	
+debug: CXXFLAGS += -gfull
+debug: $(SOURCES) $(EXECUTABLE)
     
 $(EXECUTABLE): $(OBJECTS) 
-	$(CXX) $(LDFLAGS) $(LIB) $(OBJECTS) -o $@
+	$(CXX) $(LDFLAGS) $(OBJECTS) -o $@
 
 .cpp.o:
-	$(CXX) $(CFLAGS) $(INC) $< -o $@
+	$(CXX) $(CXXFLAGS) $< -o $@
