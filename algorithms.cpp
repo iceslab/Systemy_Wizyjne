@@ -31,10 +31,37 @@ float euclideanDistance(const cv::KeyPoint & kp1, const cv::KeyPoint & kp2)
 
 void mouseClickCallback(int event, int x, int y, int flags, void* userdata)
 {
-    if(event == cv::EVENT_LBUTTONDOWN)
+    if(event != cv::EVENT_LBUTTONDOWN)
     {
-       std::cerr << "LMB clicked - position (" << x << ", " << y << ")" << std::endl;
+        return;
     }
+    
+    auto data = reinterpret_cast<CallbackData*>(userdata);
+    std::vector<float> distances;
+    distances.reserve(data->keypoints_1.size());
+
+    for(const auto& el : data->keypoints_1)
+    {
+        distances.emplace_back(euclideanDistance(x, y, el.pt.x, el.pt.y));
+    }
+
+    const auto it = std::min_element(distances.begin(), distances.end());
+    size_t index = it - distances.begin();
+
+    const auto matchIt = std::find_if(data->matches.begin(),
+                                      data->matches.end(),
+                                      [index](cv::DMatch el)->bool
+        {
+            return el.queryIdx == index;
+        });
+    const auto& kp1 = data->keypoints_1[matchIt->queryIdx];
+    const auto& kp2 = data->keypoints_2[matchIt->trainIdx];
+
+    const auto distanceFromCamera = objectDistance(5.0f, 500, 90.0f, kp1, kp2);
+    std::cerr << "  LMB clicked - position (" << x << ", " << y << ")\n" 
+              << "Closest match - position (" << kp1.pt.x << ", " << kp1.pt.y << ")\n" 
+              << "Match distance from camera: " << distanceFromCamera << "\n" 
+              << std::endl;
 }
 
 float objectDistance(float lensesDistance,

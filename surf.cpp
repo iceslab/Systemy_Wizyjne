@@ -45,10 +45,14 @@ int main( int argc, char** argv )
   std::vector<DMatch> matches;
   matcher->match(descriptors1, descriptors2, matches);
 
+  CallbackData data = {keypoints_1, keypoints_2, matches};
+
   // Drawing the results
   namedWindow("matches", 1);
-  setMouseCallback("matches", mouseClickCallback, NULL);
-  
+  setMouseCallback("matches", mouseClickCallback, &data);
+
+
+
   Mat img_matches;
   drawMatches(img_1, keypoints_1, img_2, keypoints_2, matches, img_matches);
   imshow("matches", img_matches);

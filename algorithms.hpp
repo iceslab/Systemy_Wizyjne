@@ -15,6 +15,13 @@
 #include <vector>
 #include <string>
 
+struct CallbackData
+{
+    std::vector<cv::KeyPoint>& keypoints_1;
+    std::vector<cv::KeyPoint>& keypoints_2;
+    std::vector<cv::DMatch>& matches;
+};
+
 bool readImages(const std::vector<std::string> & paths, std::vector<cv::Mat> & images);
 
 float euclideanDistance(float x1, float y1, float x2, float y2);
