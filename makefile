@@ -1,5 +1,5 @@
 CXXFLAGS=-c -Wall -std=c++14
-LDFLAGS=-lopencv_imgcodecs -lopencv_features2d -lopencv_xfeatures2d -lopencv_highgui -lopencv_core
+LDFLAGS=-lopencv_imgcodecs -lopencv_features2d -lopencv_xfeatures2d -lopencv_highgui -lopencv_core -lexiv2
 SOURCES=algorithms.cpp surf.cpp
 OBJECTS=$(SOURCES:.cpp=.o)
 EXECUTABLE=surf
