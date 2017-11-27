@@ -32,6 +32,9 @@ float euclideanDistance(const cv::KeyPoint &kp1, const cv::KeyPoint &kp2)
 void mouseCallback(int event, int x, int y, int flags, void *userdata)
 {
     static auto mouseDown = false;
+    static auto targetKp1 = cv::KeyPoint(0, 0, 1);
+    static auto targetKp2 = cv::KeyPoint(0, 0, 1);
+
     switch (event)
     {
     case cv::EVENT_LBUTTONDOWN:
@@ -48,27 +51,25 @@ void mouseCallback(int event, int x, int y, int flags, void *userdata)
     }
 
     auto data = reinterpret_cast<CallbackData *>(userdata);
-    std::vector<float> distances;
-    distances.reserve(data->keypoints_1.size());
-
-    for (const auto &el : data->keypoints_1)
-    {
-        distances.emplace_back(euclideanDistance(x, y, el.pt.x, el.pt.y));
-    }
-
-    const auto it = std::min_element(distances.begin(), distances.end());
-    size_t index = it - distances.begin();
-    DEBUG_PRINTLN("index: %zu", index);
-    DEBUG_PRINTLN("keypoints_1.size(): %zu, keypoints_2.size(): %zu", data->keypoints_1.size(),
-                  data->keypoints_2.size());
-
-    const auto &kp1 = data->keypoints_1[index];
-    const auto &kp2 = data->keypoints_2[index];
-    static auto targetKp1 = cv::KeyPoint(0, 0, 1);
-    static auto targetKp2 = cv::KeyPoint(0, 0, 1);
-
     if (!mouseDown)
     {
+        std::vector<float> distances;
+        distances.reserve(data->keypoints_1.size());
+
+        for (const auto &el : data->keypoints_1)
+        {
+            distances.emplace_back(euclideanDistance(x, y, el.pt.x, el.pt.y));
+        }
+
+        const auto it = std::min_element(distances.begin(), distances.end());
+        size_t index = it - distances.begin();
+        DEBUG_PRINTLN("index: %zu", index);
+        DEBUG_PRINTLN("keypoints_1.size(): %zu, keypoints_2.size(): %zu", data->keypoints_1.size(),
+                      data->keypoints_2.size());
+
+        const auto &kp1 = data->keypoints_1[index];
+        const auto &kp2 = data->keypoints_2[index];
+
         targetKp1 = kp1;
         targetKp2 = kp2;
     }
@@ -85,8 +86,8 @@ void mouseCallback(int event, int x, int y, int flags, void *userdata)
     int baseline = 0;
     const auto size =
         cv::getTextSize(ss.str(), LABEL_FONT_FACE, LABEL_FONT_SCALE, LABEL_THICKNESS, &baseline);
-    int labelX = x + size.width > labeled_image.cols ? x - size.width : x;
-    int labelY = y - size.height < 0 ? y + size.height : y;
+    int labelX = ((x + size.width) > labeled_image.cols) ? labeled_image.cols - size.width : x;
+    int labelY = y - size.height < 0 ? size.height : y;
     cv::putText(labeled_image, ss.str(), cv::Point(labelX, labelY), LABEL_FONT_FACE,
                 LABEL_FONT_SCALE, CV_RGB(0, 255, 0), LABEL_THICKNESS, CV_AA);
     imshow("matches", labeled_image);
