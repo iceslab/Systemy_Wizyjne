@@ -21,6 +21,10 @@
 #define VERBOSITY_LEVEL 2
 #include "Utilities/asserts.h"
 
+#define LABEL_FONT_FACE cv::FONT_HERSHEY_DUPLEX
+#define LABEL_FONT_SCALE 0.5
+#define LABEL_THICKNESS 1
+
 typedef std::pair<cv::KeyPoint, cv::KeyPoint> keypointsPairT;
 
 struct CallbackData

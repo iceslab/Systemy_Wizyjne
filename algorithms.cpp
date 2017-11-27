@@ -32,19 +32,19 @@ float euclideanDistance(const cv::KeyPoint &kp1, const cv::KeyPoint &kp2)
 void mouseCallback(int event, int x, int y, int flags, void *userdata)
 {
     static auto mouseDown = false;
-    switch(event)
+    switch (event)
     {
-        case cv::EVENT_LBUTTONDOWN:
-            mouseDown = true;
-            break;
-        case cv::EVENT_LBUTTONUP:
-            mouseDown = false;
-            break;
-        case cv::EVENT_MOUSEMOVE:
-            // Continue execution
-            break;
-        default:
-            return;
+    case cv::EVENT_LBUTTONDOWN:
+        mouseDown = true;
+        break;
+    case cv::EVENT_LBUTTONUP:
+        mouseDown = false;
+        break;
+    case cv::EVENT_MOUSEMOVE:
+        // Continue execution
+        break;
+    default:
+        return;
     }
 
     auto data = reinterpret_cast<CallbackData *>(userdata);
@@ -61,20 +61,20 @@ void mouseCallback(int event, int x, int y, int flags, void *userdata)
     DEBUG_PRINTLN("index: %zu\n", index);
     DEBUG_PRINTLN("keypoints_1.size(): %zu, keypoints_2.size(): %zu", data->keypoints_1.size(),
                   data->keypoints_2.size());
-    
+
     const auto &kp1 = data->keypoints_1[index];
     const auto &kp2 = data->keypoints_2[index];
     static auto targetKp1 = cv::KeyPoint(0, 0, 1);
     static auto targetKp2 = cv::KeyPoint(0, 0, 1);
 
-    if(!mouseDown)
+    if (!mouseDown)
     {
         targetKp1 = kp1;
         targetKp2 = kp2;
     }
 
-    const auto distanceFromCamera = objectDistance(data->lensesDistance, data->imageWidth,
-                                                   data->cameraHorizontalAngle, targetKp1, targetKp2);
+    const auto distanceFromCamera = objectDistance(
+        data->lensesDistance, data->imageWidth, data->cameraHorizontalAngle, targetKp1, targetKp2);
     DEBUG_PRINTLN("Match distance from camera: %f\n");
     std::stringstream ss;
     ss << distanceFromCamera;
@@ -82,8 +82,13 @@ void mouseCallback(int event, int x, int y, int flags, void *userdata)
     cv::Mat labeled_image;
     data->image.copyTo(labeled_image);
     cv::arrowedLine(labeled_image, cv::Point(x, y), targetKp1.pt, CV_RGB(255, 0, 0), 2, CV_AA, 0);
-    cv::putText(labeled_image, ss.str(), cv::Point(x, y), cv::FONT_HERSHEY_DUPLEX, 0.5,
-                CV_RGB(0, 255, 0), 1, CV_AA);
+    int baseline = 0;
+    const auto size =
+        cv::getTextSize(ss.str(), LABEL_FONT_FACE, LABEL_FONT_SCALE, LABEL_THICKNESS, &baseline);
+    int labelX = x + size.width > labeled_image.cols ? x - size.width : x;
+    int labelY = y - size.height < 0 ? y + size.height : y;
+    cv::putText(labeled_image, ss.str(), cv::Point(labelX, labelY), LABEL_FONT_FACE,
+                LABEL_FONT_SCALE, CV_RGB(0, 255, 0), LABEL_THICKNESS, CV_AA);
     imshow("matches", labeled_image);
 }
 
@@ -141,7 +146,7 @@ std::vector<keypointsPairT> extractMatchedPairs(const std::vector<cv::KeyPoint> 
     auto retVal = std::vector<keypointsPairT>();
     retVal.reserve(matches.size());
 
-    for(const auto match : matches)
+    for (const auto match : matches)
     {
         retVal.emplace_back(keypoints_1[match.queryIdx], keypoints_2[match.trainIdx]);
     }
@@ -149,8 +154,7 @@ std::vector<keypointsPairT> extractMatchedPairs(const std::vector<cv::KeyPoint> 
     return retVal;
 }
 
-void removeUnmatched(std::vector<cv::KeyPoint> &keypoints_1,
-                     std::vector<cv::KeyPoint> &keypoints_2,
+void removeUnmatched(std::vector<cv::KeyPoint> &keypoints_1, std::vector<cv::KeyPoint> &keypoints_2,
                      const std::vector<cv::DMatch> &matches)
 {
     auto keypoints_1_tmp = std::vector<cv::KeyPoint>();
@@ -158,7 +162,7 @@ void removeUnmatched(std::vector<cv::KeyPoint> &keypoints_1,
     auto keypoints_2_tmp = std::vector<cv::KeyPoint>();
     keypoints_2_tmp.reserve(matches.size());
 
-    for(const auto match : matches)
+    for (const auto match : matches)
     {
         keypoints_1_tmp.emplace_back(keypoints_1[match.queryIdx]);
         keypoints_2_tmp.emplace_back(keypoints_2[match.trainIdx]);
