@@ -58,7 +58,7 @@ void mouseCallback(int event, int x, int y, int flags, void *userdata)
 
     const auto it = std::min_element(distances.begin(), distances.end());
     size_t index = it - distances.begin();
-    DEBUG_PRINTLN("index: %zu\n", index);
+    DEBUG_PRINTLN("index: %zu", index);
     DEBUG_PRINTLN("keypoints_1.size(): %zu, keypoints_2.size(): %zu", data->keypoints_1.size(),
                   data->keypoints_2.size());
 
@@ -75,7 +75,7 @@ void mouseCallback(int event, int x, int y, int flags, void *userdata)
 
     const auto distanceFromCamera = objectDistance(
         data->lensesDistance, data->imageWidth, data->cameraHorizontalAngle, targetKp1, targetKp2);
-    DEBUG_PRINTLN("Match distance from camera: %f\n");
+    DEBUG_PRINTLN("Match distance from camera: %f\n", distanceFromCamera);
     std::stringstream ss;
     ss << distanceFromCamera;
 
@@ -104,7 +104,7 @@ float objectDistance(float lensesDistance, int imageWidth, float cameraHorizonta
     // x_L  - left object position (in pixels)
     // x_R  - right object position (in pixels)
 
-    DEBUG_PRINTLN("B: %6.3f x_0: %6.3f fi_0: %6.3f diff: %6.3f\n", lensesDistance,
+    DEBUG_PRINTLN("B: %6.3f x_0: %6.3f fi_0: %6.3f diff: %6.3f", lensesDistance,
                   static_cast<float>(imageWidth), cameraHorizontalAngle,
                   euclideanDistance(kp1, kp2));
 
