@@ -113,7 +113,7 @@ float objectDistance(float lensesDistance, int imageWidth, float cameraHorizonta
            (2.0f * tanf(cameraHorizontalAngle / 2.0f) * euclideanDistance(kp1, kp2));
 }
 
-void readExivMetadata(std::string path)
+Exiv2::ExifData readExivMetadata(std::string path)
 {
     Exiv2::Image::AutoPtr image = Exiv2::ImageFactory::open(path);
     image->readMetadata();
@@ -124,7 +124,6 @@ void readExivMetadata(std::string path)
         std::string error(path);
         error += ": No Exif data found in the file";
         std::cerr << error << std::endl;
-        return;
     }
 
     Exiv2::ExifData::const_iterator end = exifData.end();
@@ -138,6 +137,8 @@ void readExivMetadata(std::string path)
                   << " " << std::dec << std::setw(3) << std::setfill(' ') << std::right
                   << i->count() << "  " << std::dec << i->value() << "\n";
     }
+
+    return exifData;
 }
 
 std::vector<keypointsPairT> extractMatchedPairs(const std::vector<cv::KeyPoint> &keypoints_1,

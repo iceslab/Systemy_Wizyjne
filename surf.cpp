@@ -23,8 +23,14 @@ int main(int argc, char **argv)
     std::vector<cv::Mat> images;
     readImages(paths, images);
 
-    auto &img_1 = images[0];
-    auto &img_2 = images[1];
+    const float desiredWidth = 1024.0f;
+    const float ratio = desiredWidth / static_cast<float>(images[0].size().width);
+
+    cv::Mat img_1;
+    cv::Mat img_2;
+    cv::resize(images[0], img_1, Size(), ratio, ratio);
+    cv::resize(images[1], img_2, Size(), ratio, ratio);
+    
 
     // Detecting the keypoints using SURF Detector
     double minHessian = 400.0;
@@ -48,14 +54,19 @@ int main(int argc, char **argv)
     // Removing unmatched keypoints
     removeUnmatched(keypoints_1, keypoints_2, matches);
 
-    readExivMetadata(paths.front());
+    const auto exifData = readExivMetadata(paths.front());
+    Exiv2::ExifKey ek("Exif.Photo.FocalLength");
+    const auto it = exifData.findKey(ek);
+    if(it != exifData.end()){
+        it->value().toFloat();
+    }
 
     // Drawing the results
     Mat img_keypoints;
     drawKeypoints(img_1, keypoints_1, img_keypoints);
     
-    CallbackData data = {img_keypoints, keypoints_1, keypoints_2, matches, 5.0f, img_1.cols, 70.0f};
-    namedWindow("matches", 1);
+    CallbackData data = {img_keypoints, keypoints_1, keypoints_2, matches, 5.0f, img_1.size().width, 70.0f};
+    namedWindow("matches", cv::WINDOW_AUTOSIZE);
     setMouseCallback("matches", mouseCallback, &data);
     imshow("matches", img_keypoints);
 
