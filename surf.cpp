@@ -45,30 +45,20 @@ int main(int argc, char **argv)
     std::vector<DMatch> matches;
     matcher->match(descriptors1, descriptors2, matches);
 
+    // Removing unmatched keypoints
+    removeUnmatched(keypoints_1, keypoints_2, matches);
+
     readExivMetadata(paths.front());
 
-    CallbackData data = {keypoints_1, keypoints_2, matches, 5.0f, img_1.cols, 70.0f};
-
     // Drawing the results
-    namedWindow("matches", 1);
-    setMouseCallback("matches", mouseClickCallback, &data);
-
     Mat img_keypoints;
     drawKeypoints(img_1, keypoints_1, img_keypoints);
+    
+    CallbackData data = {img_keypoints, keypoints_1, keypoints_2, matches, 5.0f, img_1.cols, 70.0f};
+    namedWindow("matches", 1);
+    setMouseCallback("matches", mouseCallback, &data);
     imshow("matches", img_keypoints);
 
-    Mat img_matches;
-    drawMatches(img_1, keypoints_1, img_2, keypoints_2, matches, img_matches);
-    // imshow("matches", img_matches);
-
-    // fprintf(stderr, "\n");
-    // for(const auto& el : matches)
-    // {
-    //   const auto& matched_1 = keypoints_1[el.queryIdx];
-    //   const auto& matched_2 = keypoints_2[el.trainIdx];
-    //   fprintf(stderr, "%7.3f ", euclideanDistance(matched_1, matched_2));
-    // }
-    // fprintf(stderr, "\n");
     waitKey(0);
 
     return 0;

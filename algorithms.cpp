@@ -29,11 +29,22 @@ float euclideanDistance(const cv::KeyPoint &kp1, const cv::KeyPoint &kp2)
     return euclideanDistance(kp1.pt.x, kp1.pt.y, kp2.pt.x, kp2.pt.y);
 }
 
-void mouseClickCallback(int event, int x, int y, int flags, void *userdata)
+void mouseCallback(int event, int x, int y, int flags, void *userdata)
 {
-    if (event != cv::EVENT_LBUTTONDOWN)
+    static auto mouseDown = false;
+    switch(event)
     {
-        return;
+        case cv::EVENT_LBUTTONDOWN:
+            mouseDown = true;
+            break;
+        case cv::EVENT_LBUTTONUP:
+            mouseDown = false;
+            break;
+        case cv::EVENT_MOUSEMOVE:
+            // Continue execution
+            break;
+        default:
+            return;
     }
 
     auto data = reinterpret_cast<CallbackData *>(userdata);
@@ -48,30 +59,32 @@ void mouseClickCallback(int event, int x, int y, int flags, void *userdata)
     const auto it = std::min_element(distances.begin(), distances.end());
     size_t index = it - distances.begin();
     DEBUG_PRINTLN("index: %zu\n", index);
-
-    std::cerr << "  LMB clicked - position (" << x << ", " << y << ")\n"
-              << "Closest match - position (" << data->keypoints_1[index].pt.x << ", "
-              << data->keypoints_1[index].pt.y << ")\n";
-
-    const auto matchIt =
-        std::find_if(data->matches.begin(), data->matches.end(),
-                     [index](cv::DMatch el) -> bool { return el.queryIdx == index; });
-    if (matchIt == data->matches.end())
-    {
-        std::cerr << "Match distance from camera: No match found for given point\n" << std::endl;
-        return;
-    }
-
-    DEBUG_PRINTLN("matchIt->queryIdx: %d, matchIt->trainIdx: %d", matchIt->queryIdx,
-                  matchIt->trainIdx);
     DEBUG_PRINTLN("keypoints_1.size(): %zu, keypoints_2.size(): %zu", data->keypoints_1.size(),
                   data->keypoints_2.size());
-    const auto &kp1 = data->keypoints_1[matchIt->queryIdx];
-    const auto &kp2 = data->keypoints_2[matchIt->trainIdx];
+    
+    const auto &kp1 = data->keypoints_1[index];
+    const auto &kp2 = data->keypoints_2[index];
+    static auto targetKp1 = cv::KeyPoint(0, 0, 1);
+    static auto targetKp2 = cv::KeyPoint(0, 0, 1);
+
+    if(!mouseDown)
+    {
+        targetKp1 = kp1;
+        targetKp2 = kp2;
+    }
 
     const auto distanceFromCamera = objectDistance(data->lensesDistance, data->imageWidth,
-                                                   data->cameraHorizontalAngle, kp1, kp2);
-    std::cerr << "Match distance from camera: " << distanceFromCamera << "\n" << std::endl;
+                                                   data->cameraHorizontalAngle, targetKp1, targetKp2);
+    DEBUG_PRINTLN("Match distance from camera: %f\n");
+    std::stringstream ss;
+    ss << distanceFromCamera;
+
+    cv::Mat labeled_image;
+    data->image.copyTo(labeled_image);
+    cv::arrowedLine(labeled_image, cv::Point(x, y), targetKp1.pt, CV_RGB(255, 0, 0), 2, CV_AA, 0);
+    cv::putText(labeled_image, ss.str(), cv::Point(x, y), cv::FONT_HERSHEY_DUPLEX, 0.5,
+                CV_RGB(0, 255, 0), 1, CV_AA);
+    imshow("matches", labeled_image);
 }
 
 float objectDistance(float lensesDistance, int imageWidth, float cameraHorizontalAngle,
@@ -119,4 +132,38 @@ void readExivMetadata(std::string path)
                   << " " << std::dec << std::setw(3) << std::setfill(' ') << std::right
                   << i->count() << "  " << std::dec << i->value() << "\n";
     }
+}
+
+std::vector<keypointsPairT> extractMatchedPairs(const std::vector<cv::KeyPoint> &keypoints_1,
+                                                const std::vector<cv::KeyPoint> &keypoints_2,
+                                                const std::vector<cv::DMatch> &matches)
+{
+    auto retVal = std::vector<keypointsPairT>();
+    retVal.reserve(matches.size());
+
+    for(const auto match : matches)
+    {
+        retVal.emplace_back(keypoints_1[match.queryIdx], keypoints_2[match.trainIdx]);
+    }
+
+    return retVal;
+}
+
+void removeUnmatched(std::vector<cv::KeyPoint> &keypoints_1,
+                     std::vector<cv::KeyPoint> &keypoints_2,
+                     const std::vector<cv::DMatch> &matches)
+{
+    auto keypoints_1_tmp = std::vector<cv::KeyPoint>();
+    keypoints_1_tmp.reserve(matches.size());
+    auto keypoints_2_tmp = std::vector<cv::KeyPoint>();
+    keypoints_2_tmp.reserve(matches.size());
+
+    for(const auto match : matches)
+    {
+        keypoints_1_tmp.emplace_back(keypoints_1[match.queryIdx]);
+        keypoints_2_tmp.emplace_back(keypoints_2[match.trainIdx]);
+    }
+
+    keypoints_1 = std::move(keypoints_1_tmp);
+    keypoints_2 = std::move(keypoints_2_tmp);
 }

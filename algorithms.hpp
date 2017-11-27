@@ -5,6 +5,7 @@
 #include <opencv2/features2d.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/xfeatures2d.hpp>
+#include <opencv2/imgproc.hpp>
 
 #include <exiv2/exiv2.hpp>
 
@@ -17,10 +18,14 @@
 #include <tuple>
 #include <vector>
 
+#define VERBOSITY_LEVEL 2
 #include "Utilities/asserts.h"
+
+typedef std::pair<cv::KeyPoint, cv::KeyPoint> keypointsPairT;
 
 struct CallbackData
 {
+    cv::Mat &image;
     std::vector<cv::KeyPoint> &keypoints_1;
     std::vector<cv::KeyPoint> &keypoints_2;
     std::vector<cv::DMatch> &matches;
@@ -34,11 +39,19 @@ bool readImages(const std::vector<std::string> &paths, std::vector<cv::Mat> &ima
 float euclideanDistance(float x1, float y1, float x2, float y2);
 float euclideanDistance(const cv::KeyPoint &kp1, const cv::KeyPoint &kp2);
 
-void mouseClickCallback(int event, int x, int y, int flags, void *userdata);
+void mouseCallback(int event, int x, int y, int flags, void *userdata);
 
 float objectDistance(float lensesDistance, int imageWidth, float cameraHorizontalAngle,
                      const cv::KeyPoint &kp1, const cv::KeyPoint &kp2);
 
 void readExivMetadata(std::string path);
+
+std::vector<keypointsPairT> extractMatchedPairs(const std::vector<cv::KeyPoint> &keypoints_1,
+                                                const std::vector<cv::KeyPoint> &keypoints_2,
+                                                const std::vector<cv::DMatch> &matches);
+
+void removeUnmatched(std::vector<cv::KeyPoint> &keypoints_1,
+                     std::vector<cv::KeyPoint> &keypoints_2,
+                     const std::vector<cv::DMatch> &matches);
 
 #endif // !_INCLUDE_ALGORITHMS_HPP_
