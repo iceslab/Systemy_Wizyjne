@@ -113,7 +113,7 @@ float objectDistance(float lensesDistance, int imageWidth, float cameraHorizonta
            (2.0f * tanf(cameraHorizontalAngle / 2.0f) * euclideanDistance(kp1, kp2));
 }
 
-Exiv2::ExifData readExivMetadata(const std::string & path)
+Exiv2::ExifData readExivMetadata(const std::string &path)
 {
     Exiv2::Image::AutoPtr image = Exiv2::ImageFactory::open(path);
     image->readMetadata();
@@ -174,9 +174,9 @@ void removeUnmatched(std::vector<cv::KeyPoint> &keypoints_1, std::vector<cv::Key
     keypoints_2 = std::move(keypoints_2_tmp);
 }
 
-float floatGetHfovFromFile(const std::string & path)
+float floatGetHfovFromFile(const std::string &path)
 {
-    DEBUG_PRINTLN("Getting metadata", 0);
+    DEBUG_PRINTLN("%s", "Getting metadata");
     auto retVal = std::numeric_limits<float>::quiet_NaN();
 
     const Exiv2::ExifKey imageWidthKey("Exif.Photo.PixelXDimension");
@@ -199,7 +199,7 @@ float floatGetHfovFromFile(const std::string & path)
     image->readMetadata();
     const auto &exifData = image->exifData();
 
-    if(!exifData.empty())
+    if (!exifData.empty())
     {
         auto it = exifData.findKey(imageWidthKey);
         size_t keysFound = 0;
@@ -212,7 +212,7 @@ float floatGetHfovFromFile(const std::string & path)
         }
 
         it = exifData.findKey(imageLengthKey);
-        if(it != exifData.end())
+        if (it != exifData.end())
         {
             keysFound++;
             imageLength = it->value().toLong();
@@ -220,7 +220,7 @@ float floatGetHfovFromFile(const std::string & path)
         }
 
         it = exifData.findKey(focalLengthInMmKey);
-        if(it != exifData.end())
+        if (it != exifData.end())
         {
             keysFound++;
             const auto tmp = it->value().toRational();
@@ -229,7 +229,7 @@ float floatGetHfovFromFile(const std::string & path)
         }
 
         it = exifData.findKey(xResKey);
-        if(it != exifData.end())
+        if (it != exifData.end())
         {
             keysFound++;
             const auto tmp = it->value().toRational();
@@ -238,7 +238,7 @@ float floatGetHfovFromFile(const std::string & path)
         }
 
         it = exifData.findKey(yResKey);
-        if(it != exifData.end())
+        if (it != exifData.end())
         {
             keysFound++;
             const auto tmp = it->value().toRational();
@@ -247,25 +247,60 @@ float floatGetHfovFromFile(const std::string & path)
         }
 
         it = exifData.findKey(resUnitKey);
-        if(it != exifData.end())
+        if (it != exifData.end())
         {
             keysFound++;
             resUnit = it->value().toLong();
-            DEBUG_PRINTLN("Found: %s", it->key().c_str());
+            std::string name = "unrecognized";
+            switch (resUnit)
+            {
+            case 2:
+                name = "inch";
+                break;
+            case 3:
+                name = "cm";
+                break;
+            }
+
+            DEBUG_PRINTLN("Found: %s %s", it->key().c_str(), name.c_str());
         }
 
-        if(keysFound < desiredKeys)
+        if (keysFound < desiredKeys)
         {
             DEBUG_PRINTLN("Not enough exif keys found. %zu/%zu", keysFound, desiredKeys);
         }
         else
         {
-            DEBUG_PRINTLN("All exif keys found!", 0);
+            DEBUG_PRINTLN("%s", "All exif keys found!");
+
+            if (resUnit == 2 || resUnit == 3)
+            {
+                float ratio;
+                switch (resUnit)
+                {
+                case 2:
+                    ratio = 25.4f; // Convert from inch to mm
+                    break;
+                case 3:
+                    ratio = 10.0f; // Convert from cm to mm
+                    break;
+                }
+
+                DEBUG_PRINTLN("imageWidth: %ld xRes: %f, ratio: %f", imageWidth, xRes, ratio);
+                const auto h = (imageWidth / xRes) * ratio;
+                DEBUG_PRINTLN("h: %f mm 2f: %f mm", h, 2.0f * focalLength);
+                retVal = 2.0f * atan(h / (2.0f * focalLength)) * (180.0f / M_PI);
+                DEBUG_PRINTLN("Calculated angle: %f deg", retVal);
+            }
+            else
+            {
+                DEBUG_PRINTLN("Unrecognized resolution unit (%ld)", resUnit);
+            }
         }
     }
     else
     {
-        DEBUG_PRINTLN("No metadata found", 0);
+        DEBUG_PRINTLN("%s", "No metadata found");
     }
 
     return retVal;
