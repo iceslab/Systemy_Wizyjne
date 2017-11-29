@@ -48,7 +48,7 @@ void mouseCallback(int event, int x, int y, int flags, void *userdata);
 float objectDistance(float lensesDistance, int imageWidth, float cameraHorizontalAngle,
                      const cv::KeyPoint &kp1, const cv::KeyPoint &kp2);
 
-Exiv2::ExifData readExivMetadata(std::string path);
+Exiv2::ExifData readExivMetadata(const std::string &path);
 
 std::vector<keypointsPairT> extractMatchedPairs(const std::vector<cv::KeyPoint> &keypoints_1,
                                                 const std::vector<cv::KeyPoint> &keypoints_2,
@@ -57,5 +57,7 @@ std::vector<keypointsPairT> extractMatchedPairs(const std::vector<cv::KeyPoint> 
 void removeUnmatched(std::vector<cv::KeyPoint> &keypoints_1,
                      std::vector<cv::KeyPoint> &keypoints_2,
                      const std::vector<cv::DMatch> &matches);
+
+float floatGetHfovFromFile(const std::string &path);
 
 #endif // !_INCLUDE_ALGORITHMS_HPP_

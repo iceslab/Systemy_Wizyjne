@@ -7,21 +7,31 @@ void readme();
 
 int main(int argc, char **argv)
 {
-    if (argc < 3)
+    if (argc < 4)
     {
         readme();
         return -1;
     }
 
+    float camerasDistance;
+    sscanf(argv[1], "%f", &camerasDistance);
+
     std::vector<std::string> paths;
-    paths.reserve(argc - 1);
-    for (int i = 1; i < argc; i++)
+    paths.reserve(argc - 2);
+    for (int i = 2; i < argc; i++)
     {
         paths.emplace_back(argv[i]);
     }
 
     std::vector<cv::Mat> images;
     readImages(paths, images);
+
+    if(images.size() < 2){
+        readme();
+        return -2;
+    }
+
+    const auto hfov = floatGetHfovFromFile(paths.front());
 
     const float desiredWidth = 1024.0f;
     const float ratio = desiredWidth / static_cast<float>(images[0].size().width);
@@ -54,12 +64,12 @@ int main(int argc, char **argv)
     // Removing unmatched keypoints
     removeUnmatched(keypoints_1, keypoints_2, matches);
 
-    const auto exifData = readExivMetadata(paths.front());
-    Exiv2::ExifKey ek("Exif.Photo.FocalLength");
-    const auto it = exifData.findKey(ek);
-    if(it != exifData.end()){
-        it->value().toFloat();
-    }
+    // const auto exifData = readExivMetadata(paths.front());
+    // Exiv2::ExifKey ek("Exif.Photo.FocalLength");
+    // const auto it = exifData.findKey(ek);
+    // if(it != exifData.end()){
+    //     it->value().toFloat();
+    // }
 
     // Drawing the results
     Mat img_keypoints;
@@ -75,4 +85,4 @@ int main(int argc, char **argv)
     return 0;
 }
 
-void readme() { std::cout << " Usage: ./surf <img1> <img2>" << std::endl; }
+void readme() { std::cout << " Usage: ./surf <camerasDistance> <img1> <img2> ..." << std::endl; }

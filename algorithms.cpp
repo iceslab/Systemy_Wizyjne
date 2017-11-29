@@ -113,7 +113,7 @@ float objectDistance(float lensesDistance, int imageWidth, float cameraHorizonta
            (2.0f * tanf(cameraHorizontalAngle / 2.0f) * euclideanDistance(kp1, kp2));
 }
 
-Exiv2::ExifData readExivMetadata(std::string path)
+Exiv2::ExifData readExivMetadata(const std::string & path)
 {
     Exiv2::Image::AutoPtr image = Exiv2::ImageFactory::open(path);
     image->readMetadata();
@@ -172,4 +172,97 @@ void removeUnmatched(std::vector<cv::KeyPoint> &keypoints_1, std::vector<cv::Key
 
     keypoints_1 = std::move(keypoints_1_tmp);
     keypoints_2 = std::move(keypoints_2_tmp);
+}
+
+float floatGetHfovFromFile(const std::string & path)
+{
+    DEBUG_PRINTLN("Getting metadata", 0);
+    auto retVal = std::numeric_limits<float>::quiet_NaN();
+
+    const Exiv2::ExifKey imageWidthKey("Exif.Photo.PixelXDimension");
+    const Exiv2::ExifKey imageLengthKey("Exif.Photo.PixelYDimension");
+
+    const Exiv2::ExifKey focalLengthInMmKey("Exif.Photo.FocalLength");
+    const Exiv2::ExifKey xResKey("Exif.Image.FocalPlaneXResolution");
+    const Exiv2::ExifKey yResKey("Exif.Image.FocalPlaneYResolution");
+    const Exiv2::ExifKey resUnitKey("Exif.Image.FocalPlaneResolutionUnit");
+
+    auto imageWidth = std::numeric_limits<long>::max();
+    auto imageLength = std::numeric_limits<long>::max();
+
+    auto focalLength = std::numeric_limits<double>::quiet_NaN();
+    auto xRes = std::numeric_limits<double>::quiet_NaN();
+    auto yRes = std::numeric_limits<double>::quiet_NaN();
+    auto resUnit = std::numeric_limits<long>::max();
+
+    const auto image = Exiv2::ImageFactory::open(path);
+    image->readMetadata();
+    const auto &exifData = image->exifData();
+
+    if(!exifData.empty())
+    {
+        auto it = exifData.findKey(imageWidthKey);
+        size_t keysFound = 0;
+        size_t desiredKeys = 6;
+        if (it != exifData.end())
+        {
+            keysFound++;
+            imageWidth = it->value().toLong();
+            DEBUG_PRINTLN("Found: %s %ld px", it->key().c_str(), imageWidth);
+        }
+
+        it = exifData.findKey(imageLengthKey);
+        if(it != exifData.end())
+        {
+            keysFound++;
+            imageLength = it->value().toLong();
+            DEBUG_PRINTLN("Found: %s %ld px", it->key().c_str(), imageLength);
+        }
+
+        it = exifData.findKey(focalLengthInMmKey);
+        if(it != exifData.end())
+        {
+            keysFound++;
+            const auto tmp = it->value().toRational();
+            focalLength = static_cast<double>(tmp.first) / static_cast<double>(tmp.second);
+            DEBUG_PRINTLN("Found: %s %f mm", it->key().c_str(), focalLength);
+        }
+
+        it = exifData.findKey(xResKey);
+        if(it != exifData.end())
+        {
+            keysFound++;
+            const auto tmp = it->value().toRational();
+            xRes = static_cast<double>(tmp.first) / static_cast<double>(tmp.second);
+            DEBUG_PRINTLN("Found: %s %f", it->key().c_str(), xRes);
+        }
+
+        it = exifData.findKey(yResKey);
+        if(it != exifData.end())
+        {
+            keysFound++;
+            const auto tmp = it->value().toRational();
+            yRes = static_cast<double>(tmp.first) / static_cast<double>(tmp.second);
+            DEBUG_PRINTLN("Found: %s %f", it->key().c_str(), yRes);
+        }
+
+        it = exifData.findKey(resUnitKey);
+        if(it != exifData.end())
+        {
+            keysFound++;
+            resUnit = it->value().toLong();
+            DEBUG_PRINTLN("Found: %s", it->key().c_str());
+        }
+
+        if(keysFound < desiredKeys)
+        {
+            DEBUG_PRINTLN("Not enough exif keys found. %zu/%zu", keysFound, desiredKeys);
+        }
+    }
+    else
+    {
+        DEBUG_PRINTLN("No metadata found", 0);
+    }
+
+    return retVal;
 }
