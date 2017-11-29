@@ -183,9 +183,9 @@ float floatGetHfovFromFile(const std::string & path)
     const Exiv2::ExifKey imageLengthKey("Exif.Photo.PixelYDimension");
 
     const Exiv2::ExifKey focalLengthInMmKey("Exif.Photo.FocalLength");
-    const Exiv2::ExifKey xResKey("Exif.Image.FocalPlaneXResolution");
-    const Exiv2::ExifKey yResKey("Exif.Image.FocalPlaneYResolution");
-    const Exiv2::ExifKey resUnitKey("Exif.Image.FocalPlaneResolutionUnit");
+    const Exiv2::ExifKey xResKey("Exif.Photo.FocalPlaneXResolution");
+    const Exiv2::ExifKey yResKey("Exif.Photo.FocalPlaneYResolution");
+    const Exiv2::ExifKey resUnitKey("Exif.Photo.FocalPlaneResolutionUnit");
 
     auto imageWidth = std::numeric_limits<long>::max();
     auto imageLength = std::numeric_limits<long>::max();
@@ -257,6 +257,10 @@ float floatGetHfovFromFile(const std::string & path)
         if(keysFound < desiredKeys)
         {
             DEBUG_PRINTLN("Not enough exif keys found. %zu/%zu", keysFound, desiredKeys);
+        }
+        else
+        {
+            DEBUG_PRINTLN("All exif keys found!", 0);
         }
     }
     else
