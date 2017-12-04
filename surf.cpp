@@ -26,12 +26,14 @@ int main(int argc, char **argv)
     std::vector<cv::Mat> images;
     readImages(paths, images);
 
-    if(images.size() < 2){
+    if (images.size() < 2)
+    {
         readme();
         return -2;
     }
 
-    const auto hfov = floatGetHfovFromFile(paths.front());
+    auto hfov = floatGetHfovFromFile(paths.front());
+    hfov = hfov == std::numeric_limits<float>::max() ? 70.0f : hfov;
 
     const float desiredWidth = 1024.0f;
     const float ratio = desiredWidth / static_cast<float>(images[0].size().width);
@@ -40,7 +42,6 @@ int main(int argc, char **argv)
     cv::Mat img_2;
     cv::resize(images[0], img_1, Size(), ratio, ratio);
     cv::resize(images[1], img_2, Size(), ratio, ratio);
-    
 
     // Detecting the keypoints using SURF Detector
     double minHessian = 400.0;
@@ -74,8 +75,9 @@ int main(int argc, char **argv)
     // Drawing the results
     Mat img_keypoints;
     drawKeypoints(img_1, keypoints_1, img_keypoints);
-    
-    CallbackData data = {img_keypoints, keypoints_1, keypoints_2, matches, 5.0f, img_1.size().width, 70.0f};
+
+    CallbackData data = {img_keypoints,   keypoints_1,        keypoints_2, matches,
+                         camerasDistance, img_1.size().width, hfov};
     namedWindow("matches", cv::WINDOW_AUTOSIZE);
     setMouseCallback("matches", mouseCallback, &data);
     imshow("matches", img_keypoints);

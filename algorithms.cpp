@@ -177,7 +177,7 @@ void removeUnmatched(std::vector<cv::KeyPoint> &keypoints_1, std::vector<cv::Key
 float floatGetHfovFromFile(const std::string &path)
 {
     DEBUG_PRINTLN("%s", "Getting metadata");
-    auto retVal = std::numeric_limits<float>::quiet_NaN();
+    auto retVal = std::numeric_limits<float>::max();
 
     const Exiv2::ExifKey imageWidthKey("Exif.Photo.PixelXDimension");
     const Exiv2::ExifKey imageLengthKey("Exif.Photo.PixelYDimension");
@@ -255,10 +255,10 @@ float floatGetHfovFromFile(const std::string &path)
             switch (resUnit)
             {
             case 2:
-                name = "inch";
+                name = "cm";
                 break;
             case 3:
-                name = "cm";
+                name = "inch";
                 break;
             }
 
@@ -279,10 +279,10 @@ float floatGetHfovFromFile(const std::string &path)
                 switch (resUnit)
                 {
                 case 2:
-                    ratio = 25.4f; // Convert from inch to mm
+                    ratio = 10.0f; // Convert from cm to mm
                     break;
                 case 3:
-                    ratio = 10.0f; // Convert from cm to mm
+                    ratio = 25.4f; // Convert from inch to mm
                     break;
                 }
 
