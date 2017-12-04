@@ -157,21 +157,61 @@ std::vector<keypointsPairT> extractMatchedPairs(const std::vector<cv::KeyPoint> 
 }
 
 void removeUnmatched(std::vector<cv::KeyPoint> &keypoints_1, std::vector<cv::KeyPoint> &keypoints_2,
-                     const std::vector<cv::DMatch> &matches)
+                     std::vector<cv::DMatch> &matches)
 {
     auto keypoints_1_tmp = std::vector<cv::KeyPoint>();
     keypoints_1_tmp.reserve(matches.size());
     auto keypoints_2_tmp = std::vector<cv::KeyPoint>();
     keypoints_2_tmp.reserve(matches.size());
+    auto matches_tmp = std::vector<cv::DMatch>();
+    matches_tmp.reserve(matches.size());
 
-    for (const auto match : matches)
+    const double anglesDeviation = 0.02;
+    std::vector<double> angles;
+    angles.reserve(matches.size());
+    double anglesMean = 0.0;
+
+    for (size_t i = 0; i < matches.size(); i++)
     {
-        keypoints_1_tmp.emplace_back(keypoints_1[match.queryIdx]);
-        keypoints_2_tmp.emplace_back(keypoints_2[match.trainIdx]);
+        const auto &match = matches[i];
+        const auto val = getLineAngle(keypoints_1[match.queryIdx], keypoints_2[match.trainIdx]);
+        anglesMean += val;
+        angles.emplace_back(val);
+    }
+
+    anglesMean /= static_cast<double>(matches.size());
+    const double anglesDeviationMin = anglesMean - anglesDeviation;
+    const double anglesDeviationMax = anglesMean + anglesDeviation;
+    DEBUG_PRINTLN(
+        "anglesMean: %f anglesDeviation: %f anglesDeviationMin: %f anglesDeviationMax: %f",
+        anglesMean, anglesDeviation, anglesDeviationMin, anglesDeviationMax);
+
+    for (size_t i = 0, idx = 0; i < matches.size(); i++)
+    {
+        if (anglesDeviationMin < angles[i] && angles[i] < anglesDeviationMax)
+        {
+            const auto &match = matches[i];
+            keypoints_1_tmp.emplace_back(keypoints_1[match.queryIdx]);
+            keypoints_2_tmp.emplace_back(keypoints_2[match.trainIdx]);
+            matches_tmp.emplace_back(idx, idx, match.distance);
+            idx++;
+        }
     }
 
     keypoints_1 = std::move(keypoints_1_tmp);
     keypoints_2 = std::move(keypoints_2_tmp);
+    matches = std::move(matches_tmp);
+
+    DEBUG_PRINTLN("k1.size(): %zu k2.size(): %zu matches.size(): %zu", keypoints_1.size(),
+                  keypoints_2.size(), matches.size());
+}
+
+float getLineAngle(const cv::KeyPoint &kp1, const cv::KeyPoint &kp2)
+{
+    const auto a = kp1.pt.y - kp2.pt.y;
+    const auto b = kp1.pt.x - kp2.pt.x;
+    DEBUG_PRINTLN("atan(a/b): %f a: %f b: %f", std::atan(a / b), a, b);
+    return std::atan(a / b);
 }
 
 float floatGetHfovFromFile(const std::string &path)

@@ -65,22 +65,21 @@ int main(int argc, char **argv)
     // Removing unmatched keypoints
     removeUnmatched(keypoints_1, keypoints_2, matches);
 
-    // const auto exifData = readExivMetadata(paths.front());
-    // Exiv2::ExifKey ek("Exif.Photo.FocalLength");
-    // const auto it = exifData.findKey(ek);
-    // if(it != exifData.end()){
-    //     it->value().toFloat();
-    // }
-
     // Drawing the results
     Mat img_keypoints;
     drawKeypoints(img_1, keypoints_1, img_keypoints);
+    
+    Mat img_matches;
+    drawMatches(img_1, keypoints_1, img_2, keypoints_2, matches, img_matches);
 
-    CallbackData data = {img_keypoints,   keypoints_1,        keypoints_2, matches,
-                         camerasDistance, img_1.size().width, hfov};
-    namedWindow("matches", cv::WINDOW_AUTOSIZE);
-    setMouseCallback("matches", mouseCallback, &data);
-    imshow("matches", img_keypoints);
+    // CallbackData data = {img_keypoints,   keypoints_1,        keypoints_2, matches,
+    //                      camerasDistance, img_1.size().width, hfov};
+    // namedWindow("matches", cv::WINDOW_AUTOSIZE);
+    // setMouseCallback("matches", mouseCallback, &data);
+    // imshow("matches", img_keypoints);
+
+    namedWindow("paired");
+    imshow("paired", img_matches);
 
     waitKey(0);
 
