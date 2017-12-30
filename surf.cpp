@@ -68,18 +68,37 @@ int main(int argc, char **argv)
     // Drawing the results
     Mat img_keypoints;
     drawKeypoints(img_1, keypoints_1, img_keypoints);
-    
-    Mat img_matches;
-    drawMatches(img_1, keypoints_1, img_2, keypoints_2, matches, img_matches);
 
-    // CallbackData data = {img_keypoints,   keypoints_1,        keypoints_2, matches,
-    //                      camerasDistance, img_1.size().width, hfov};
-    // namedWindow("matches", cv::WINDOW_AUTOSIZE);
-    // setMouseCallback("matches", mouseCallback, &data);
-    // imshow("matches", img_keypoints);
+    Scalar matchColor(0, 255, 0);
 
-    namedWindow("paired");
-    imshow("paired", img_matches);
+    std::vector<char> matchesMask(matches.size(), 0);
+
+    // Draw every match separately
+    // for (size_t i = 0; i < matches.size(); i++)
+    // {
+    //     DEBUG_PRINT("%zu ", i);
+    //     if (i > 0)
+    //     {
+    //         matchesMask[i - 1] = 0;
+    //     }
+    //     matchesMask[i] = 1;
+    //     Mat img_matches;
+    //     drawMatches(img_1, keypoints_1, img_2, keypoints_2, matches, img_matches, matchColor,
+    //                 matchColor, matchesMask);
+    //     namedWindow("paired");
+    //     imshow("paired", img_matches);
+    //     // if (std::any_of(wrongMatchesIdx.begin(), wrongMatchesIdx.end(),
+    //     //                 [i](size_t idx) { return idx == i; }))
+    //     {
+    //         waitKey(0);
+    //     }
+    // }
+
+    CallbackData data = {img_keypoints,   keypoints_1,        keypoints_2, matches,
+                         camerasDistance, img_1.size().width, hfov};
+    namedWindow("matches", cv::WINDOW_AUTOSIZE);
+    setMouseCallback("matches", mouseCallback, &data);
+    imshow("matches", img_keypoints);
 
     waitKey(0);
 

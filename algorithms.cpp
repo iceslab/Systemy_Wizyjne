@@ -159,6 +159,99 @@ std::vector<keypointsPairT> extractMatchedPairs(const std::vector<cv::KeyPoint> 
 void removeUnmatched(std::vector<cv::KeyPoint> &keypoints_1, std::vector<cv::KeyPoint> &keypoints_2,
                      std::vector<cv::DMatch> &matches)
 {
+    filterByAngle(keypoints_1, keypoints_2, matches);
+    filterByDistance(keypoints_1, keypoints_2, matches);
+}
+
+void filterByDistance(std::vector<cv::KeyPoint> &keypoints_1,
+                      std::vector<cv::KeyPoint> &keypoints_2, std::vector<cv::DMatch> &matches)
+{
+    auto keypoints_1_tmp = std::vector<cv::KeyPoint>();
+    keypoints_1_tmp.reserve(matches.size());
+    auto keypoints_2_tmp = std::vector<cv::KeyPoint>();
+    keypoints_2_tmp.reserve(matches.size());
+    auto matches_tmp = std::vector<cv::DMatch>();
+    matches_tmp.reserve(matches.size());
+
+    const double distancesDeviationX = 30.0;
+    const double distancesDeviationY = 30.0;
+    std::vector<std::pair<double, double>> distances;
+    distances.reserve(matches.size());
+    double distancesMeanX = 0.0;
+    double distancesMeanY = 0.0;
+
+    for (size_t i = 0; i < matches.size(); i++)
+    {
+        const auto &match = matches[i];
+        const auto valX = keypoints_1[match.queryIdx].pt.x - keypoints_2[match.trainIdx].pt.x;
+        const auto valY = keypoints_1[match.queryIdx].pt.y - keypoints_2[match.trainIdx].pt.y;
+
+        DEBUG_PRINTLN("%zu: valX: %f valY: %f", i, valX, valY);
+        distancesMeanX += valX;
+        distancesMeanY += valY;
+        distances.emplace_back(std::make_pair(valX, valY));
+    }
+
+    distancesMeanX /= static_cast<double>(matches.size());
+    distancesMeanY /= static_cast<double>(matches.size());
+    const double distancesDeviationMinX = distancesMeanX - distancesDeviationX;
+    const double distancesDeviationMaxX = distancesMeanX + distancesDeviationX;
+    const double distancesDeviationMinY = distancesMeanY - distancesDeviationY;
+    const double distancesDeviationMaxY = distancesMeanY + distancesDeviationY;
+    DEBUG_PRINTLN("distancesMeanX: %f distancesDeviationX: %f distancesDeviationMinX: %f "
+                  "distancesDeviationMaxX: %f",
+                  distancesMeanX, distancesDeviationX, distancesDeviationMinX,
+                  distancesDeviationMaxX);
+    DEBUG_PRINTLN("distancesMeanY: %f distancesDeviationY: %f distancesDeviationMinY: %f "
+                  "distancesDeviationMaxY: %f",
+                  distancesMeanY, distancesDeviationY, distancesDeviationMinY,
+                  distancesDeviationMaxY);
+
+    for (size_t i = 0, idx = 0; i < matches.size(); i++)
+    {
+        const auto &match = matches[i];
+        const auto valX = keypoints_1[match.queryIdx].pt.x - keypoints_2[match.trainIdx].pt.x;
+        if (valX > 0.0 &&
+            distancesDeviationMinX < distances[i].first &&
+            distances[i].first < distancesDeviationMaxX //&&
+            //distancesDeviationMinY < distances[i].second &&
+            //distances[i].second < distancesDeviationMaxY
+            )
+        {
+            const auto &match = matches[i];
+            keypoints_1_tmp.emplace_back(keypoints_1[match.queryIdx]);
+            keypoints_2_tmp.emplace_back(keypoints_2[match.trainIdx]);
+            matches_tmp.emplace_back(idx, idx, match.distance);
+            idx++;
+        }
+    }
+
+    std::vector<size_t> wrongMatchesIdx = {2, 7, 12, 14, 18, 42, 58, 66, 70, 74, 79};
+
+    DEBUG_PRINTLN("%s", "Filtered keypoints:");
+    for (size_t i = 0; i < keypoints_1_tmp.size(); i++)
+    {
+        if (std::any_of(wrongMatchesIdx.begin(), wrongMatchesIdx.end(),
+                        [i](size_t idx) { return idx == i; }))
+        {
+            DEBUG_PRINT("%s", "\t");
+        }
+
+        DEBUG_PRINT("%zu: ", i);
+        getLineAngle(keypoints_1_tmp[i], keypoints_2_tmp[i]);
+    }
+
+    keypoints_1 = std::move(keypoints_1_tmp);
+    keypoints_2 = std::move(keypoints_2_tmp);
+    matches = std::move(matches_tmp);
+
+    DEBUG_PRINTLN("k1.size(): %zu k2.size(): %zu matches.size(): %zu", keypoints_1.size(),
+                  keypoints_2.size(), matches.size());
+}
+
+void filterByAngle(std::vector<cv::KeyPoint> &keypoints_1, std::vector<cv::KeyPoint> &keypoints_2,
+                   std::vector<cv::DMatch> &matches)
+{
     auto keypoints_1_tmp = std::vector<cv::KeyPoint>();
     keypoints_1_tmp.reserve(matches.size());
     auto keypoints_2_tmp = std::vector<cv::KeyPoint>();
@@ -196,6 +289,21 @@ void removeUnmatched(std::vector<cv::KeyPoint> &keypoints_1, std::vector<cv::Key
             matches_tmp.emplace_back(idx, idx, match.distance);
             idx++;
         }
+    }
+
+    std::vector<size_t> wrongMatchesIdx = {2, 7, 12, 14, 18, 42, 58, 66, 70, 74, 79};
+
+    DEBUG_PRINTLN("%s", "Filtered keypoints:");
+    for (size_t i = 0; i < keypoints_1_tmp.size(); i++)
+    {
+        if (std::any_of(wrongMatchesIdx.begin(), wrongMatchesIdx.end(),
+                        [i](size_t idx) { return idx == i; }))
+        {
+            DEBUG_PRINT("%s", "\t");
+        }
+
+        DEBUG_PRINT("%zu: ", i);
+        getLineAngle(keypoints_1_tmp[i], keypoints_2_tmp[i]);
     }
 
     keypoints_1 = std::move(keypoints_1_tmp);

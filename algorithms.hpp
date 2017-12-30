@@ -57,6 +57,12 @@ std::vector<keypointsPairT> extractMatchedPairs(const std::vector<cv::KeyPoint> 
 void removeUnmatched(std::vector<cv::KeyPoint> &keypoints_1, std::vector<cv::KeyPoint> &keypoints_2,
                      std::vector<cv::DMatch> &matches);
 
+void filterByDistance(std::vector<cv::KeyPoint> &keypoints_1,
+                      std::vector<cv::KeyPoint> &keypoints_2, std::vector<cv::DMatch> &matches);
+
+void filterByAngle(std::vector<cv::KeyPoint> &keypoints_1, std::vector<cv::KeyPoint> &keypoints_2,
+                   std::vector<cv::DMatch> &matches);
+
 float getLineAngle(const cv::KeyPoint &kp1, const cv::KeyPoint &kp2);
 
 float floatGetHfovFromFile(const std::string &path);
