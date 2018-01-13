@@ -5,7 +5,7 @@ bool readImages(const std::vector<std::string> &paths, std::vector<cv::Mat> &ima
     auto retVal = true;
     for (const auto &path : paths)
     {
-        images.emplace_back(cv::imread(path.c_str(), cv::IMREAD_GRAYSCALE));
+        images.emplace_back(cv::imread(path.c_str(), cv::IMREAD_COLOR));
         if (!images.back().data)
         {
             std::cerr << " --(!) Error reading images: " << path << std::endl;
@@ -63,9 +63,10 @@ void mouseCallback(int event, int x, int y, int flags, void *userdata)
 
         const auto it = std::min_element(distances.begin(), distances.end());
         size_t index = it - distances.begin();
-        DEBUG_PRINTLN("index: %zu", index);
-        DEBUG_PRINTLN("keypoints_1.size(): %zu, keypoints_2.size(): %zu", data->keypoints_1.size(),
-                      data->keypoints_2.size());
+        // DEBUG_PRINTLN("index: %zu", index);
+        // DEBUG_PRINTLN("keypoints_1.size(): %zu, keypoints_2.size(): %zu",
+        // data->keypoints_1.size(),
+        //              data->keypoints_2.size());
 
         const auto &kp1 = data->keypoints_1[index];
         const auto &kp2 = data->keypoints_2[index];
@@ -76,7 +77,7 @@ void mouseCallback(int event, int x, int y, int flags, void *userdata)
 
     const auto distanceFromCamera = objectDistance(
         data->lensesDistance, data->imageWidth, data->cameraHorizontalAngle, targetKp1, targetKp2);
-    DEBUG_PRINTLN("Match distance from camera: %f\n", distanceFromCamera);
+    // DEBUG_PRINTLN("Match distance from camera: %f\n", distanceFromCamera);
     std::stringstream ss;
     ss << distanceFromCamera;
 
@@ -105,9 +106,9 @@ float objectDistance(float lensesDistance, int imageWidth, float cameraHorizonta
     // x_L  - left object position (in pixels)
     // x_R  - right object position (in pixels)
 
-    DEBUG_PRINTLN("B: %6.3f x_0: %6.3f fi_0: %6.3f diff: %6.3f", lensesDistance,
-                  static_cast<float>(imageWidth), cameraHorizontalAngle,
-                  euclideanDistance(kp1, kp2));
+    // DEBUG_PRINTLN("B: %6.3f x_0: %6.3f fi_0: %6.3f diff: %6.3f", lensesDistance,
+    //              static_cast<float>(imageWidth), cameraHorizontalAngle,
+    //              euclideanDistance(kp1, kp2));
 
     return (lensesDistance * static_cast<float>(imageWidth)) /
            (2.0f * tanf(cameraHorizontalAngle / 2.0f) * euclideanDistance(kp1, kp2));
@@ -156,11 +157,37 @@ std::vector<keypointsPairT> extractMatchedPairs(const std::vector<cv::KeyPoint> 
     return retVal;
 }
 
+void filterMatches(std::vector<cv::KeyPoint> &keypoints_1, std::vector<cv::KeyPoint> &keypoints_2,
+                   std::vector<cv::DMatch> &matches)
+{
+    removeUnmatched(keypoints_1, keypoints_2, matches);
+    // filterUsingRansac(keypoints_1, keypoints_2, matches);
+    filterByDistance(keypoints_1, keypoints_2, matches);
+    filterByAngle(keypoints_1, keypoints_2, matches);
+}
+
 void removeUnmatched(std::vector<cv::KeyPoint> &keypoints_1, std::vector<cv::KeyPoint> &keypoints_2,
                      std::vector<cv::DMatch> &matches)
 {
-    filterByAngle(keypoints_1, keypoints_2, matches);
-    filterByDistance(keypoints_1, keypoints_2, matches);
+    auto keypoints_1_tmp = std::vector<cv::KeyPoint>();
+    keypoints_1_tmp.reserve(matches.size());
+    auto keypoints_2_tmp = std::vector<cv::KeyPoint>();
+    keypoints_2_tmp.reserve(matches.size());
+    auto matches_tmp = std::vector<cv::DMatch>();
+    matches_tmp.reserve(matches.size());
+
+    for (size_t i = 0, idx = 0; i < matches.size(); i++)
+    {
+        const auto &match = matches[i];
+        keypoints_1_tmp.emplace_back(keypoints_1[match.queryIdx]);
+        keypoints_2_tmp.emplace_back(keypoints_2[match.trainIdx]);
+        matches_tmp.emplace_back(idx, idx, match.distance);
+        idx++;
+    }
+
+    keypoints_1 = std::move(keypoints_1_tmp);
+    keypoints_2 = std::move(keypoints_2_tmp);
+    matches = std::move(matches_tmp);
 }
 
 void filterByDistance(std::vector<cv::KeyPoint> &keypoints_1,
@@ -173,10 +200,10 @@ void filterByDistance(std::vector<cv::KeyPoint> &keypoints_1,
     auto matches_tmp = std::vector<cv::DMatch>();
     matches_tmp.reserve(matches.size());
 
-    const double distancesDeviationX = 30.0;
-    const double distancesDeviationY = 30.0;
-    std::vector<std::pair<double, double>> distances;
-    distances.reserve(matches.size());
+    std::vector<double> distancesX;
+    std::vector<double> distancesY;
+    distancesX.reserve(matches.size());
+    distancesY.reserve(matches.size());
     double distancesMeanX = 0.0;
     double distancesMeanY = 0.0;
 
@@ -186,60 +213,55 @@ void filterByDistance(std::vector<cv::KeyPoint> &keypoints_1,
         const auto valX = keypoints_1[match.queryIdx].pt.x - keypoints_2[match.trainIdx].pt.x;
         const auto valY = keypoints_1[match.queryIdx].pt.y - keypoints_2[match.trainIdx].pt.y;
 
-        DEBUG_PRINTLN("%zu: valX: %f valY: %f", i, valX, valY);
+        // DEBUG_PRINTLN("%zu: valX: %f valY: %f", i, valX, valY);
         distancesMeanX += valX;
         distancesMeanY += valY;
-        distances.emplace_back(std::make_pair(valX, valY));
+        distancesX.emplace_back(valX);
+        distancesY.emplace_back(valY);
     }
 
-    distancesMeanX /= static_cast<double>(matches.size());
-    distancesMeanY /= static_cast<double>(matches.size());
-    const double distancesDeviationMinX = distancesMeanX - distancesDeviationX;
-    const double distancesDeviationMaxX = distancesMeanX + distancesDeviationX;
-    const double distancesDeviationMinY = distancesMeanY - distancesDeviationY;
-    const double distancesDeviationMaxY = distancesMeanY + distancesDeviationY;
-    DEBUG_PRINTLN("distancesMeanX: %f distancesDeviationX: %f distancesDeviationMinX: %f "
-                  "distancesDeviationMaxX: %f",
-                  distancesMeanX, distancesDeviationX, distancesDeviationMinX,
-                  distancesDeviationMaxX);
-    DEBUG_PRINTLN("distancesMeanY: %f distancesDeviationY: %f distancesDeviationMinY: %f "
-                  "distancesDeviationMaxY: %f",
-                  distancesMeanY, distancesDeviationY, distancesDeviationMinY,
-                  distancesDeviationMaxY);
+    const auto normalX = distribution::getNormalDistribution(distancesX);
+    const auto normalY = distribution::getNormalDistribution(distancesY);
+
+    const double alphaX = normalX.getDistributionInX(distancesX, 0.1);
+    const double alphaY = normalY.getDistributionInX(distancesY, 0.1);
 
     for (size_t i = 0, idx = 0; i < matches.size(); i++)
     {
+
         const auto &match = matches[i];
         const auto valX = keypoints_1[match.queryIdx].pt.x - keypoints_2[match.trainIdx].pt.x;
-        if (valX > 0.0 &&
-            distancesDeviationMinX < distances[i].first &&
-            distances[i].first < distancesDeviationMaxX //&&
-            //distancesDeviationMinY < distances[i].second &&
-            //distances[i].second < distancesDeviationMaxY
-            )
+        if (valX > 0.0 && normalX.getProbabilityDenisty(distancesX[i]) > alphaX &&
+            normalY.getProbabilityDenisty(distancesY[i]) > alphaY)
         {
             const auto &match = matches[i];
             keypoints_1_tmp.emplace_back(keypoints_1[match.queryIdx]);
             keypoints_2_tmp.emplace_back(keypoints_2[match.trainIdx]);
             matches_tmp.emplace_back(idx, idx, match.distance);
             idx++;
+            DEBUG_PRINTLN("distanceX: %3.2f alphaX: %10.9f, distanceY: %3.2f alphaY: %10.9f",
+                          distancesX[i], alphaX, distancesY[i], alphaY);
+        }
+        else
+        {
+            DEBUG_PRINTLN(
+                "distanceX: %3.2f alphaX: %10.9f, distanceY: %3.2f alphaY: %10.9f - discarded",
+                distancesX[i], alphaX, distancesY[i], alphaY);
         }
     }
 
     std::vector<size_t> wrongMatchesIdx = {2, 7, 12, 14, 18, 42, 58, 66, 70, 74, 79};
 
-    DEBUG_PRINTLN("%s", "Filtered keypoints:");
-    for (size_t i = 0; i < keypoints_1_tmp.size(); i++)
-    {
-        if (std::any_of(wrongMatchesIdx.begin(), wrongMatchesIdx.end(),
-                        [i](size_t idx) { return idx == i; }))
-        {
-            DEBUG_PRINT("%s", "\t");
-        }
-
-        DEBUG_PRINT("%zu: ", i);
-        getLineAngle(keypoints_1_tmp[i], keypoints_2_tmp[i]);
-    }
+    // DEBUG_PRINTLN("%s", "Filtered keypoints:");
+    // for (size_t i = 0; i < keypoints_1_tmp.size(); i++)
+    // {
+    //     if (std::any_of(wrongMatchesIdx.begin(), wrongMatchesIdx.end(),
+    //                     [i](size_t idx) { return idx == i; }))
+    //     {
+    //         DEBUG_PRINT("%s", "\t");
+    //     }
+    //     DEBUG_PRINT("%zu: ", i);
+    // }
 
     keypoints_1 = std::move(keypoints_1_tmp);
     keypoints_2 = std::move(keypoints_2_tmp);
@@ -259,7 +281,6 @@ void filterByAngle(std::vector<cv::KeyPoint> &keypoints_1, std::vector<cv::KeyPo
     auto matches_tmp = std::vector<cv::DMatch>();
     matches_tmp.reserve(matches.size());
 
-    const double anglesDeviation = 0.02;
     std::vector<double> angles;
     angles.reserve(matches.size());
     double anglesMean = 0.0;
@@ -272,16 +293,83 @@ void filterByAngle(std::vector<cv::KeyPoint> &keypoints_1, std::vector<cv::KeyPo
         angles.emplace_back(val);
     }
 
-    anglesMean /= static_cast<double>(matches.size());
-    const double anglesDeviationMin = anglesMean - anglesDeviation;
-    const double anglesDeviationMax = anglesMean + anglesDeviation;
-    DEBUG_PRINTLN(
-        "anglesMean: %f anglesDeviation: %f anglesDeviationMin: %f anglesDeviationMax: %f",
-        anglesMean, anglesDeviation, anglesDeviationMin, anglesDeviationMax);
-
+    const auto normalAngles = distribution::getNormalDistribution(angles);
+    const double alphaAngle = normalAngles.getDistributionInX(angles, 0.1);
     for (size_t i = 0, idx = 0; i < matches.size(); i++)
     {
-        if (anglesDeviationMin < angles[i] && angles[i] < anglesDeviationMax)
+        if (normalAngles.getProbabilityDenisty(angles[i]) > alphaAngle)
+        {
+            const auto &match = matches[i];
+            keypoints_1_tmp.emplace_back(keypoints_1[match.queryIdx]);
+            keypoints_2_tmp.emplace_back(keypoints_2[match.trainIdx]);
+            matches_tmp.emplace_back(idx, idx, match.distance);
+            idx++;
+            DEBUG_PRINTLN("angle: %3.2f angleDensity: %10.9f alphaAngle: %10.9f", angles[i],
+                          normalAngles.getProbabilityDenisty(angles[i]), alphaAngle);
+        }
+        else
+        {
+            DEBUG_PRINTLN("angle: %3.2f angleDensity: %10.9f alphaAngle: %10.9f - discarded",
+                          angles[i], normalAngles.getProbabilityDenisty(angles[i]), alphaAngle);
+        }
+    }
+
+    // std::vector<size_t> wrongMatchesIdx = {2, 7, 12, 14, 18, 42, 58, 66, 70, 74, 79};
+
+    // DEBUG_PRINTLN("%s", "Filtered keypoints:");
+    // for (size_t i = 0; i < keypoints_1_tmp.size(); i++)
+    // {
+    //     if (std::any_of(wrongMatchesIdx.begin(), wrongMatchesIdx.end(),
+    //                     [i](size_t idx) { return idx == i; }))
+    //     {
+    //         DEBUG_PRINT("%s", "\t");
+    //     }
+
+    //     DEBUG_PRINT("%zu: ", i);
+    //     getLineAngle(keypoints_1_tmp[i], keypoints_2_tmp[i]);
+    // }
+
+    keypoints_1 = std::move(keypoints_1_tmp);
+    keypoints_2 = std::move(keypoints_2_tmp);
+    matches = std::move(matches_tmp);
+
+    DEBUG_PRINTLN("k1.size(): %zu k2.size(): %zu matches.size(): %zu", keypoints_1.size(),
+                  keypoints_2.size(), matches.size());
+}
+
+void filterUsingRansac(std::vector<cv::KeyPoint> &keypoints_1,
+                       std::vector<cv::KeyPoint> &keypoints_2, std::vector<cv::DMatch> &matches)
+{
+    auto keypoints_1_tmp = std::vector<cv::KeyPoint>();
+    keypoints_1_tmp.reserve(matches.size());
+    auto keypoints_2_tmp = std::vector<cv::KeyPoint>();
+    keypoints_2_tmp.reserve(matches.size());
+    auto matches_tmp = std::vector<cv::DMatch>();
+    matches_tmp.reserve(matches.size());
+    auto src_pts = std::vector<cv::Point2f>();
+    src_pts.reserve(matches.size());
+    auto dst_pts = std::vector<cv::Point2f>();
+    dst_pts.reserve(matches.size());
+
+    for (const auto &kp : keypoints_1)
+    {
+        src_pts.push_back(kp.pt);
+    }
+
+    for (const auto &kp : keypoints_2)
+    {
+        dst_pts.push_back(kp.pt);
+    }
+
+    cv::Mat mask = cv::findHomography(src_pts, dst_pts);
+
+    DEBUG_PRINTLN("height: %d", mask.size().height);
+    DEBUG_PRINTLN("width: %d", mask.size().width);
+    const auto maskSize = static_cast<size_t>(mask.size().height);
+    for (size_t i = 0, idx = 0; i < maskSize; i++)
+    {
+        const auto &el = mask.at<uchar>(i);
+        if (el != 0)
         {
             const auto &match = matches[i];
             keypoints_1_tmp.emplace_back(keypoints_1[match.queryIdx]);
@@ -291,27 +379,9 @@ void filterByAngle(std::vector<cv::KeyPoint> &keypoints_1, std::vector<cv::KeyPo
         }
     }
 
-    std::vector<size_t> wrongMatchesIdx = {2, 7, 12, 14, 18, 42, 58, 66, 70, 74, 79};
-
-    DEBUG_PRINTLN("%s", "Filtered keypoints:");
-    for (size_t i = 0; i < keypoints_1_tmp.size(); i++)
-    {
-        if (std::any_of(wrongMatchesIdx.begin(), wrongMatchesIdx.end(),
-                        [i](size_t idx) { return idx == i; }))
-        {
-            DEBUG_PRINT("%s", "\t");
-        }
-
-        DEBUG_PRINT("%zu: ", i);
-        getLineAngle(keypoints_1_tmp[i], keypoints_2_tmp[i]);
-    }
-
     keypoints_1 = std::move(keypoints_1_tmp);
     keypoints_2 = std::move(keypoints_2_tmp);
     matches = std::move(matches_tmp);
-
-    DEBUG_PRINTLN("k1.size(): %zu k2.size(): %zu matches.size(): %zu", keypoints_1.size(),
-                  keypoints_2.size(), matches.size());
 }
 
 float getLineAngle(const cv::KeyPoint &kp1, const cv::KeyPoint &kp2)
@@ -452,4 +522,33 @@ float floatGetHfovFromFile(const std::string &path)
     }
 
     return retVal;
+}
+
+void qrDecomposition()
+{
+    // arma::mat Q, R;
+    // arma::mat ATranspose = A.t();
+    // qr(Q, R, ATranspose);
+
+    // arma::mat x = randu<arma::mat>(9, 1);
+    // for (int i = 0; i < 9; i++)
+    // {
+    //     x(i, 0) = Q(i, 8);
+    // }
+    // for (int i = 0; i < 9; i++)
+    // {
+    //     x(i, 0) /= x(8, 0);
+    // }
+
+    // double norm2 = norm(x, 2);
+    // arma::mat h = randu<mat>(3, 3);
+    // h(0, 0) = x(0, 0) / norm2;
+    // h(0, 1) = x(1, 0) / norm2;
+    // h(0, 2) = x(2, 0) / norm2;
+    // h(1, 0) = x(3, 0) / norm2;
+    // h(1, 1) = x(4, 0) / norm2;
+    // h(1, 2) = x(5, 0) / norm2;
+    // h(2, 0) = x(6, 0) / norm2;
+    // h(2, 1) = x(7, 0) / norm2;
+    // h(2, 2) = x(8, 0) / norm2;
 }

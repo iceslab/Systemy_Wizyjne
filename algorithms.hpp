@@ -1,6 +1,7 @@
 #ifndef _INCLUDE_ALGORITHMS_HPP_
 #define _INCLUDE_ALGORITHMS_HPP_
 
+#include <opencv2/opencv.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/features2d.hpp>
 #include <opencv2/highgui.hpp>
@@ -8,6 +9,9 @@
 #include <opencv2/imgproc.hpp>
 
 #include <exiv2/exiv2.hpp>
+
+// #include <armadillo>
+#include "NormalDistribution.h"
 
 #include <algorithm>
 #include <cmath>
@@ -54,6 +58,9 @@ std::vector<keypointsPairT> extractMatchedPairs(const std::vector<cv::KeyPoint> 
                                                 const std::vector<cv::KeyPoint> &keypoints_2,
                                                 const std::vector<cv::DMatch> &matches);
 
+void filterMatches(std::vector<cv::KeyPoint> &keypoints_1, std::vector<cv::KeyPoint> &keypoints_2,
+                   std::vector<cv::DMatch> &matches);
+
 void removeUnmatched(std::vector<cv::KeyPoint> &keypoints_1, std::vector<cv::KeyPoint> &keypoints_2,
                      std::vector<cv::DMatch> &matches);
 
@@ -63,8 +70,13 @@ void filterByDistance(std::vector<cv::KeyPoint> &keypoints_1,
 void filterByAngle(std::vector<cv::KeyPoint> &keypoints_1, std::vector<cv::KeyPoint> &keypoints_2,
                    std::vector<cv::DMatch> &matches);
 
+void filterUsingRansac(std::vector<cv::KeyPoint> &keypoints_1,
+                       std::vector<cv::KeyPoint> &keypoints_2, std::vector<cv::DMatch> &matches);
+
 float getLineAngle(const cv::KeyPoint &kp1, const cv::KeyPoint &kp2);
 
 float floatGetHfovFromFile(const std::string &path);
+
+void qrDecomposition();
 
 #endif // !_INCLUDE_ALGORITHMS_HPP_
