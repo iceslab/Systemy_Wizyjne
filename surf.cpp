@@ -32,6 +32,7 @@ int main(int argc, char **argv)
         return -2;
     }
 
+    //readExivMetadata(paths.front());
     auto hfov = floatGetHfovFromFile(paths.front());
     hfov = hfov == std::numeric_limits<float>::max() ? 70.0f : hfov;
 
@@ -51,39 +52,6 @@ int main(int argc, char **argv)
 
     detector->detect(img_1, keypoints_1);
     detector->detect(img_2, keypoints_2);
-
-    // int minDisparity = 0;
-    // int numDisparities = 16;
-    // int blockSize = 3;
-    // int P1 = 0; // 24 * img_1.size().width * img_1.size().height;
-    // int P2 = 0; // 96 * img_1.size().width * img_1.size().height;
-    // int disp12MaxDiff = 1000000;
-    // int preFilterCap = 0;
-    // int uniquenessRatio = 0;
-    // int speckleWindowSize = 20;
-    // int speckleRange = 0;
-    // int mode = StereoSGBM::MODE_SGBM_3WAY;
-
-    // Ptr<StereoSGBM> mapper =
-    //     StereoSGBM::create(minDisparity, numDisparities, blockSize, P1, P2, disp12MaxDiff,
-    //                        preFilterCap, uniquenessRatio, speckleWindowSize, speckleRange, mode);
-    // Mat disparity_out, scaled_disparity;
-    // mapper->compute(img_1, img_2, disparity_out);
-    // disparity_out /= 16.0;
-
-    // double minVal, maxVal;
-    // minMaxLoc(disparity_out, &minVal, &maxVal);
-    // DEBUG_PRINTLN("min %f max %f", minVal, maxVal);
-    // scaled_disparity = disparity_out - minVal;
-    // scaled_disparity *= 1.0 / (maxVal - minVal);
-
-    // minMaxLoc(scaled_disparity, &minVal, &maxVal);
-    // DEBUG_PRINTLN("min %f max %f", minVal, maxVal);
-
-    // imshow("Original left image", img_1);
-    // imshow("Disparity map", disparity_out * 255 * 256);
-    // waitKey(0);
-    // return 0;
 
     // Computing descriptors
     Mat descriptors1, descriptors2;

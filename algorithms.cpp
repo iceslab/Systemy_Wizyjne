@@ -63,10 +63,9 @@ void mouseCallback(int event, int x, int y, int flags, void *userdata)
 
         const auto it = std::min_element(distances.begin(), distances.end());
         size_t index = it - distances.begin();
-        // DEBUG_PRINTLN("index: %zu", index);
-        // DEBUG_PRINTLN("keypoints_1.size(): %zu, keypoints_2.size(): %zu",
-        // data->keypoints_1.size(),
-        //              data->keypoints_2.size());
+        DEBUG_PRINTLN_VERBOSE_DEBUG("index: %zu", index);
+        DEBUG_PRINTLN_VERBOSE_DEBUG("keypoints_1.size(): %zu, keypoints_2.size(): %zu",
+                                    data->keypoints_1.size(), data->keypoints_2.size());
 
         const auto &kp1 = data->keypoints_1[index];
         const auto &kp2 = data->keypoints_2[index];
@@ -77,7 +76,7 @@ void mouseCallback(int event, int x, int y, int flags, void *userdata)
 
     const auto distanceFromCamera = objectDistance(
         data->lensesDistance, data->imageWidth, data->cameraHorizontalAngle, targetKp1, targetKp2);
-    // DEBUG_PRINTLN("Match distance from camera: %f\n", distanceFromCamera);
+    DEBUG_PRINTLN_VERBOSE_DEBUG("Match distance from camera: %f\n", distanceFromCamera);
     std::stringstream ss;
     ss << distanceFromCamera;
 
@@ -106,9 +105,10 @@ float objectDistance(float lensesDistance, int imageWidth, float cameraHorizonta
     // x_L  - left object position (in pixels)
     // x_R  - right object position (in pixels)
 
-    // DEBUG_PRINTLN("B: %6.3f x_0: %6.3f fi_0: %6.3f diff: %6.3f", lensesDistance,
-    //              static_cast<float>(imageWidth), cameraHorizontalAngle,
-    //              euclideanDistance(kp1, kp2));
+    DEBUG_PRINTLN_VERBOSE_DEBUG("B: %6.3f x_0: %6.3f fi_0: %9.8f distance: %6.3f, tan(fi_0): %9.8f",
+                                lensesDistance, static_cast<float>(imageWidth),
+                                cameraHorizontalAngle, euclideanDistance(kp1, kp2),
+                                tanf(cameraHorizontalAngle / 2.0f));
 
     return (lensesDistance * static_cast<float>(imageWidth)) /
            (2.0f * tanf(cameraHorizontalAngle / 2.0f) * euclideanDistance(kp1, kp2));
@@ -239,12 +239,13 @@ void filterByDistance(std::vector<cv::KeyPoint> &keypoints_1,
             keypoints_2_tmp.emplace_back(keypoints_2[match.trainIdx]);
             matches_tmp.emplace_back(idx, idx, match.distance);
             idx++;
-            DEBUG_PRINTLN("distanceX: %3.2f alphaX: %10.9f, distanceY: %3.2f alphaY: %10.9f",
-                          distancesX[i], alphaX, distancesY[i], alphaY);
+            DEBUG_PRINTLN_VERBOSE_DEBUG(
+                "distanceX: %3.2f alphaX: %10.9f, distanceY: %3.2f alphaY: %10.9f", distancesX[i],
+                alphaX, distancesY[i], alphaY);
         }
         else
         {
-            DEBUG_PRINTLN(
+            DEBUG_PRINTLN_VERBOSE_DEBUG(
                 "distanceX: %3.2f alphaX: %10.9f, distanceY: %3.2f alphaY: %10.9f - discarded",
                 distancesX[i], alphaX, distancesY[i], alphaY);
         }
@@ -304,13 +305,15 @@ void filterByAngle(std::vector<cv::KeyPoint> &keypoints_1, std::vector<cv::KeyPo
             keypoints_2_tmp.emplace_back(keypoints_2[match.trainIdx]);
             matches_tmp.emplace_back(idx, idx, match.distance);
             idx++;
-            DEBUG_PRINTLN("angle: %3.2f angleDensity: %10.9f alphaAngle: %10.9f", angles[i],
-                          normalAngles.getProbabilityDenisty(angles[i]), alphaAngle);
+            DEBUG_PRINTLN_VERBOSE_DEBUG("angle: %3.2f angleDensity: %10.9f alphaAngle: %10.9f",
+                                        angles[i], normalAngles.getProbabilityDenisty(angles[i]),
+                                        alphaAngle);
         }
         else
         {
-            DEBUG_PRINTLN("angle: %3.2f angleDensity: %10.9f alphaAngle: %10.9f - discarded",
-                          angles[i], normalAngles.getProbabilityDenisty(angles[i]), alphaAngle);
+            DEBUG_PRINTLN_VERBOSE_DEBUG(
+                "angle: %3.2f angleDensity: %10.9f alphaAngle: %10.9f - discarded", angles[i],
+                normalAngles.getProbabilityDenisty(angles[i]), alphaAngle);
         }
     }
 
@@ -388,7 +391,7 @@ float getLineAngle(const cv::KeyPoint &kp1, const cv::KeyPoint &kp2)
 {
     const auto a = kp1.pt.y - kp2.pt.y;
     const auto b = kp1.pt.x - kp2.pt.x;
-    DEBUG_PRINTLN("atan(a/b): %f a: %f b: %f", std::atan(a / b), a, b);
+    DEBUG_PRINTLN_VERBOSE_DEBUG("atan(a/b): %f a: %f b: %f", std::atan(a / b), a, b);
     return std::atan(a / b);
 }
 
@@ -396,6 +399,8 @@ float floatGetHfovFromFile(const std::string &path)
 {
     DEBUG_PRINTLN("%s", "Getting metadata");
     auto retVal = std::numeric_limits<float>::max();
+
+    const Exiv2::ExifKey userCommentKey("Exif.Photo.UserComment");
 
     const Exiv2::ExifKey imageWidthKey("Exif.Photo.PixelXDimension");
     const Exiv2::ExifKey imageLengthKey("Exif.Photo.PixelYDimension");
@@ -419,7 +424,30 @@ float floatGetHfovFromFile(const std::string &path)
 
     if (!exifData.empty())
     {
-        auto it = exifData.findKey(imageWidthKey);
+        auto it = exifData.findKey(userCommentKey);
+        if (it != exifData.end())
+        {
+            DEBUG_PRINT("Found: %s", it->key().c_str());
+            auto userComment = it->value().toString();
+            try
+            {
+                float retVal = std::stof(userComment);
+                DEBUG_PRINTLN(" %f, skipping other keys and returning as HFOV", retVal);
+                DEBUG_PRINTLN("Calculated angle: %f deg", retVal * (180.0f / M_PI));
+                DEBUG_PRINTLN("Calculated angle: %f rad", retVal);
+                return retVal;
+            }
+            catch (std::invalid_argument &e1)
+            {
+                DEBUG_PRINTLN("%s", ", but it doesn't represent float");
+            }
+            catch (std::out_of_range &e2)
+            {
+                DEBUG_PRINTLN("%s", ", but it doesn't fit in float");
+            }
+        }
+
+        it = exifData.findKey(imageWidthKey);
         size_t keysFound = 0;
         size_t desiredKeys = 6;
         if (it != exifData.end())
@@ -473,10 +501,10 @@ float floatGetHfovFromFile(const std::string &path)
             switch (resUnit)
             {
             case 2:
-                name = "cm";
+                name = "inch";
                 break;
             case 3:
-                name = "inch";
+                name = "cm";
                 break;
             }
 
@@ -497,18 +525,21 @@ float floatGetHfovFromFile(const std::string &path)
                 switch (resUnit)
                 {
                 case 2:
-                    ratio = 10.0f; // Convert from cm to mm
+                    ratio = 25.4f; // Convert from inch to mm
                     break;
                 case 3:
-                    ratio = 25.4f; // Convert from inch to mm
+                    ratio = 10.0f; // Convert from cm to mm
                     break;
                 }
 
+                // Once upon a time dividing imageWidth by 1000 has given good HFOV
                 DEBUG_PRINTLN("imageWidth: %ld xRes: %f, ratio: %f", imageWidth, xRes, ratio);
                 const auto h = (imageWidth / xRes) * ratio;
                 DEBUG_PRINTLN("h: %f mm 2f: %f mm", h, 2.0f * focalLength);
-                retVal = 2.0f * atan(h / (2.0f * focalLength)) * (180.0f / M_PI);
-                DEBUG_PRINTLN("Calculated angle: %f deg", retVal);
+                retVal = 2.0f * atan(h / (2.0f * focalLength));
+                DEBUG_PRINTLN("Calculated angle: %f deg", retVal * (180.0f / M_PI));
+                DEBUG_PRINTLN("Calculated angle: %f rad", retVal);
+                retVal = 65.0f / 180.0f * M_PI;
             }
             else
             {

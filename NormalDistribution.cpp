@@ -93,14 +93,14 @@ NormalDistribution getNormalDistribution(const std::vector<double> &data)
 {
     if (data.empty())
     {
-        DEBUG_PRINTLN("%s", "Vector is empty");
+        DEBUG_PRINTLN_VERBOSE_DEBUG("%s", "Vector is empty");
         return NormalDistribution(0.0, 0.0);
     }
 
     const auto mean = NormalDistribution::calculateMean(data);
     const auto stddev = NormalDistribution::calculateStddev(data, mean);
 
-    DEBUG_PRINTLN("data.size(): %zu mean: %f stddev: %f", data.size(), mean, stddev);
+    DEBUG_PRINTLN_VERBOSE_DEBUG("data.size(): %zu mean: %f stddev: %f", data.size(), mean, stddev);
     return NormalDistribution(mean, stddev);
 }
 }
